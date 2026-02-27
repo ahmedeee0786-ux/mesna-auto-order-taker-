@@ -1,0 +1,11 @@
+node_modules
+.wwebjs_auth
+.wwebjs_cache
+.env
+.git
+*.bat
+mesna-bot.zip
+mesna-bot-mobile
+qr.png
+orders.json
+profiles.json
