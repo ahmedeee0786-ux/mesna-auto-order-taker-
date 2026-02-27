@@ -16,19 +16,26 @@ console.log(`
 ╚══════════════════════════════════════╝
 `);
 
-// Cross-Platform Chromium Detection (Termux support)
-const termuxPaths = [
-    "/data/data/com.termux/files/usr/bin/chromium",
-    "/data/data/com.termux/files/usr/bin/chromium-browser"
-];
+// Cross-Platform Chromium Detection (Cloud / Termux / Windows)
+const chromiumPaths = [
+    process.env.PUPPETEER_EXECUTABLE_PATH,                    // Cloud (Railway env var)
+    "/data/data/com.termux/files/usr/bin/chromium",            // Termux
+    "/data/data/com.termux/files/usr/bin/chromium-browser",    // Termux alt
+    "/usr/bin/chromium",                                       // Linux
+    "/usr/bin/chromium-browser",                               // Linux alt
+    "/usr/bin/google-chrome-stable",                           // Linux Chrome
+].filter(Boolean);
+
 let executablePath = undefined;
-for (const p of termuxPaths) {
+for (const p of chromiumPaths) {
     if (fs.existsSync(p)) {
         executablePath = p;
-        console.log(`📱 Termux Chromium found at: ${executablePath}`);
+        console.log(`✅ Browser found: ${executablePath}`);
         break;
     }
 }
+if (!executablePath) console.log("💻 Using default Puppeteer Chromium (Windows/Mac)");
+
 
 // Multi-Client Session Setup (v6.0)
 const clientId = process.env.SESSION_ID || 'default-client';
