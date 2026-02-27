@@ -10,8 +10,20 @@ class SheetsManager {
     async init() {
         if (this.doc) return;
         try {
-            const credentials = require(process.env.GOOGLE_SERVICE_ACCOUNT_JSON_PATH);
-            // Fix private key if it has literal \n instead of newlines
+            let credentials;
+            if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+                // Railway/Cloud: credentials stored as env var
+                credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+            } else {
+                // Local: credentials from file
+                const fs = require('fs');
+                const credPath = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_PATH || './service-account.json';
+                if (!fs.existsSync(credPath)) {
+                    console.log("⚠️ service-account.json not found. Google Sheets disabled.");
+                    return;
+                }
+                credentials = require(credPath);
+            }
             const privateKey = credentials.private_key.replace(/\\n/g, '\n');
 
             const auth = new JWT({
@@ -24,14 +36,15 @@ class SheetsManager {
             await this.doc.loadInfo();
             console.log(`Connected to Sheet: ${this.doc.title}`);
         } catch (error) {
-            console.error("Error connecting to Google Sheets:", error);
-            throw error;
+            console.error("⚠️ Google Sheets error (non-fatal):", error.message);
+            this.doc = null;
         }
     }
 
     async getMenu() {
         try {
             await this.init();
+            if (!this.doc) return null;
             const sheet = this.doc.sheetsByTitle["Menu"];
             if (!sheet) {
                 console.log("No 'Menu' tab found. Using local config.");
@@ -59,20 +72,18 @@ class SheetsManager {
     async updateMenu(menuData) {
         try {
             await this.init();
+            if (!this.doc) return false;
             let sheet = this.doc.sheetsByTitle["Menu"];
 
-            // Create "Menu" sheet if it doesn't exist
             if (!sheet) {
                 sheet = await this.doc.addSheet({
                     title: "Menu",
                     headerValues: ["Category", "Item", "Price"]
                 });
             } else {
-                // Clear existing rows
                 await sheet.clearRows();
             }
 
-            // Prepare rows
             const rowsToAdd = [];
             for (const category in menuData) {
                 menuData[category].forEach(itemObj => {
@@ -84,7 +95,6 @@ class SheetsManager {
                 });
             }
 
-            // Add new rows
             if (rowsToAdd.length > 0) {
                 await sheet.addRows(rowsToAdd);
             }
@@ -95,12 +105,16 @@ class SheetsManager {
             return false;
         }
     }
+
     async addOrder(data) {
         try {
             await this.init();
-            const sheet = this.doc.sheetsByIndex[0]; // Assuming first sheet
+            if (!this.doc) {
+                console.log("⚠️ Google Sheets not connected. Order saved locally only.");
+                return false;
+            }
+            const sheet = this.doc.sheetsByIndex[0];
 
-            // Check if headers exist
             try {
                 await sheet.loadHeaderRow();
             } catch (e) {
