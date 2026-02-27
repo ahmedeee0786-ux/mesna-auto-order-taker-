@@ -1,0 +1,136 @@
+{
+  "menu": {
+    "Special Pizza (2-in-1 enabled)": [
+      {
+        "item": "786 Special Pizza",
+        "price": "S: 600, M: 1090, L: 1490"
+      },
+      {
+        "item": "Hot Mughlai Pizza",
+        "price": "S: 600, M: 1090, L: 1490"
+      },
+      {
+        "item": "Bonfire Pizza",
+        "price": "S: 600, M: 1090, L: 1490"
+      },
+      {
+        "item": "Peri Peri Pizza",
+        "price": "S: 600, M: 1090, L: 1490"
+      },
+      {
+        "item": "Malai Boti Pizza",
+        "price": "S: 600, M: 1090, L: 1490"
+      },
+      {
+        "item": "Creamy Tikka Pizza",
+        "price": "S: 600, M: 1090, L: 1490"
+      },
+      {
+        "item": "Shahi Pizza",
+        "price": "S: 600, M: 1090, L: 1490"
+      },
+      {
+        "item": "Nawabi Pizza",
+        "price": "S: 600, M: 1090, L: 1490"
+      },
+      {
+        "item": "Crispy Chicken Pizza",
+        "price": "S: 600, M: 1090, L: 1490"
+      }
+    ],
+    "Crust Pizza": [
+      {
+        "item": "Crown Crust / Chicken / Kabab Stuffer / Cheese Stuffer / Behari Kabab / Royal Crust",
+        "price": "M: 1290, L: 1690"
+      }
+    ],
+    "Double Dough Pizza": [
+      {
+        "item": "Xtream Peri Peri / Xtream Tikka / Xtream Crunchy",
+        "price": "M: 1590, L: 1990"
+      }
+    ],
+    "Regular Pizza": [
+      {
+        "item": "Chicken Lover / Cheese Lover / Chicken Tikka / Chicken Fajita / Chicken Supreme / Hot & Spicy / Vegetable",
+        "price": "S: 550, M: 990, L: 1390"
+      }
+    ],
+    "Paratha Rolls": [
+      {
+        "item": "Kababish Paratha Roll",
+        "price": 360
+      },
+      {
+        "item": "Zinger Paratha Roll",
+        "price": 360
+      },
+      {
+        "item": "Zinger Cheese Paratha Roll",
+        "price": 400
+      },
+      {
+        "item": "Chicken Cheese Paratha Roll",
+        "price": 400
+      }
+    ],
+    "Our Deals": [
+      {
+        "item": "Deal 01 (1 Zinger + 1 Reg Drink)",
+        "price": 410
+      },
+      {
+        "item": "Deal 02 (1 Zinger + 1 Small Fries + 1 Reg Drink)",
+        "price": 550
+      },
+      {
+        "item": "Deal 03 (1 Small Pizza + 1 Reg Drink)",
+        "price": 590
+      },
+      {
+        "item": "Deal 04 (10 Hot Wings + 1 Reg Drink)",
+        "price": 640
+      },
+      {
+        "item": "Deal 05 (1 Medium Pizza + 1 Ltr Drink)",
+        "price": 1090
+      },
+      {
+        "item": "Deal 06 (4 Zinger Burger + 1.5 Ltr Drink)",
+        "price": 1540
+      },
+      {
+        "item": "Deal 07 (1 Large Pizza + 1.5 Ltr Drink)",
+        "price": 1490
+      },
+      {
+        "item": "Deal 08 (2 Medium Pizza + 1.5 Ltr Drink)",
+        "price": 1980
+      },
+      {
+        "item": "Deal 09 (1 Large Pizza + 4 Zinger Burger + 1.5 Ltr Drink)",
+        "price": 2890
+      },
+      {
+        "item": "Deal 10 (5 Nuggets + 5 Hot Wings + 1 Reg Drink)",
+        "price": 660
+      },
+      {
+        "item": "Deal 11 (1 Small Pizza + 10 Hot Wings + 1 Ltr Drink)",
+        "price": 1280
+      },
+      {
+        "item": "Deal 12 (5 Seekh Kabab + 1 Reg Drink)",
+        "price": 580
+      },
+      {
+        "item": "Deal 13 (2 Zinger Burger + 1 Ltr Drink)",
+        "price": 1350
+      }
+    ]
+  },
+  "restaurantName": "ahmed ",
+  "deliveryCharges": 150,
+  "minDeliveryOrder": 0,
+  "adminPhone": "03134585489"
+}

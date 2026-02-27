@@ -1,0 +1,38 @@
+{
+  "name": "mesna-bot",
+  "version": "6.0.0",
+  "description": "Mesna - AI-powered WhatsApp food ordering bot with dashboard, Google Sheets integration, and multi-client support.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js",
+    "dashboard": "node server.js",
+    "sync-menu": "node sync_menu.js"
+  },
+  "keywords": [
+    "whatsapp",
+    "bot",
+    "food-ordering",
+    "ai",
+    "automation"
+  ],
+  "author": "Ahmad",
+  "license": "MIT",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "google-auth-library": "^10.5.0",
+    "google-spreadsheet": "^5.2.0",
+    "open": "^11.0.0",
+    "openai": "^6.22.0",
+    "qrcode": "^1.5.4",
+    "qrcode-terminal": "^0.12.0",
+    "socket.io": "^4.8.3",
+    "whatsapp-web.js": "^1.34.6"
+  }
+}
