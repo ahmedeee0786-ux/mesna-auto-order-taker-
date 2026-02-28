@@ -17,24 +17,42 @@ console.log(`
 `);
 
 // Cross-Platform Chromium Detection (Cloud / Termux / Windows)
-const chromiumPaths = [
-    process.env.PUPPETEER_EXECUTABLE_PATH,                    // Cloud (Railway env var)
-    "/data/data/com.termux/files/usr/bin/chromium",            // Termux
-    "/data/data/com.termux/files/usr/bin/chromium-browser",    // Termux alt
-    "/usr/bin/chromium",                                       // Linux
-    "/usr/bin/chromium-browser",                               // Linux alt
-    "/usr/bin/google-chrome-stable",                           // Linux Chrome
-].filter(Boolean);
+const { execSync } = require('child_process');
 
-let executablePath = undefined;
-for (const p of chromiumPaths) {
-    if (fs.existsSync(p)) {
-        executablePath = p;
-        console.log(`✅ Browser found: ${executablePath}`);
-        break;
+let executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || undefined;
+
+if (!executablePath) {
+    const chromiumPaths = [
+        "/usr/bin/chromium",                                       // Linux / Docker
+        "/usr/bin/chromium-browser",                               // Linux alt
+        "/usr/bin/google-chrome-stable",                           // Linux Chrome
+        "/data/data/com.termux/files/usr/bin/chromium",            // Termux
+        "/data/data/com.termux/files/usr/bin/chromium-browser",    // Termux alt
+    ];
+
+    for (const p of chromiumPaths) {
+        if (fs.existsSync(p)) {
+            executablePath = p;
+            break;
+        }
+    }
+
+    // Nixpacks fallback: chromium path includes a hash, use 'which' to find it
+    if (!executablePath) {
+        try {
+            executablePath = execSync('which chromium').toString().trim();
+        } catch (e) {
+            // Not found via which either
+        }
     }
 }
-if (!executablePath) console.log("💻 Using default Puppeteer Chromium (Windows/Mac)");
+
+if (executablePath) {
+    console.log(`✅ Browser found: ${executablePath}`);
+} else {
+    console.log("💻 Using default Puppeteer Chromium (Windows/Mac)");
+    executablePath = undefined;
+}
 
 
 // Multi-Client Session Setup (v6.0)
