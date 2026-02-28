@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const fs = require('fs');
 
 function startDashboard(port = 3000) {
     const app = express();
@@ -15,8 +16,6 @@ function startDashboard(port = 3000) {
 
         socket.on('save-settings', (data) => {
             console.log('Saving settings:', data);
-            const fs = require('fs');
-            const path = require('path');
 
             // Update .env for API Key if provided
             if (data.key) {
@@ -38,14 +37,8 @@ function startDashboard(port = 3000) {
         });
     });
 
-    server.listen(port, async () => {
+    server.listen(port, () => {
         console.log(`Mesna Dashboard is live at http://localhost:${port}`);
-        try {
-            const open = (await import('open')).default;
-            await open(`http://localhost:${port}`);
-        } catch (err) {
-            console.log("Could not auto-open browser, please visit http://localhost:3000 manually.");
-        }
     });
 
     return io;

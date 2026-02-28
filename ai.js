@@ -155,15 +155,18 @@ class MesnaAI {
     try {
       console.log(`[AI Request] User: ${userId}, Provider: ${this.provider}, Message: ${message}`);
       if (this.provider === "gemini") {
-        const chat = this.model.startChat({ // Fixed: Use this.model initialized in constructor
+        const chat = this.model.startChat({
           history: session.history,
+          systemInstruction: { parts: [{ text: systemPrompt }] },
         });
 
         const result = await chat.sendMessage(message);
         aiResponse = result.response.text();
 
         session.history.push({ role: "user", parts: [{ text: message }] });
-        session.history.push({ role: "model", parts: [{ text: aiResponse }] });
+        // Strip ORDER_DATA from history to prevent re-triggering
+        const cleanGeminiResponse = aiResponse.split("ORDER_DATA:")[0].trim();
+        session.history.push({ role: "model", parts: [{ text: cleanGeminiResponse }] });
       } else {
         console.log("History Length:", session.history.length);
         const response = await this.openai.chat.completions.create({

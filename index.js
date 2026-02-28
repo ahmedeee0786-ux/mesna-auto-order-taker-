@@ -188,7 +188,8 @@ const handleMessage = async (msg) => {
                     name: orderData.name,
                     phone: orderData.phone || userId.split("@")[0],
                     address: orderData.address,
-                    order: orderData.items
+                    order: orderData.items,
+                    total: orderData.total
                 });
                 console.log("Successfully logged order to sheet.");
 
@@ -246,8 +247,7 @@ const handleMessage = async (msg) => {
         // Send cleaned response back
         await client.sendMessage(msg.from, finalResponse);
 
-        // Send Menu Image automatically if Menu is mentioned or if specifically requested
-        const menuMentions = ["menu", "pizzas", "burgers", "zinger", "deals", "gabbar", "gabber"];
+        // Send Menu Image automatically if specifically requested
         const mediaKeywords = ["pic", "photo", "tasveer", "picture"];
 
         const shouldSendImage =
