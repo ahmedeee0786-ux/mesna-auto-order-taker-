@@ -126,12 +126,22 @@ io.on('connection', (socket) => {
 // Load menu dynamically
 let restaurantMenu = config.menu;
 async function refreshMenu() {
-    const sheetMenu = await sheets.getMenu();
-    if (sheetMenu) {
-        restaurantMenu = sheetMenu;
-        console.log("Menu loaded from Google Sheets!");
-    } else {
-        console.log("Using local menu from config.json");
+    try {
+        const configPath = path.join(__dirname, 'config.json');
+        if (fs.existsSync(configPath)) {
+            const currentConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            restaurantMenu = currentConfig.menu;
+        }
+
+        const sheetMenu = await sheets.getMenu();
+        if (sheetMenu) {
+            restaurantMenu = sheetMenu;
+            console.log("Menu loaded from Google Sheets!");
+        } else {
+            console.log("Using local menu from config.json");
+        }
+    } catch (e) {
+        console.error("Error refreshing menu:", e);
     }
 }
 
@@ -178,6 +188,7 @@ const processingUsers = new Set();
 
 const handleMessage = async (msg) => {
     try {
+        await refreshMenu(); // Ensure we have latest menu/config for every message
         const contact = await msg.getContact();
         const userId = contact.id._serialized;
 
@@ -242,7 +253,9 @@ const handleMessage = async (msg) => {
 
                 // admin notification (v5.0)
                 try {
-                    const currentConfig = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
+                    const configPath = path.join(__dirname, 'config.json');
+                    const currentConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+
                     if (currentConfig.adminPhone) {
                         const adminId = `${currentConfig.adminPhone}@c.us`;
                         const adminMsg = `🚨 *NEW ORDER RECEIVED!*\n\n*Customer:* ${orderData.name}\n*Phone:* ${orderData.phone}\n*Items:* ${orderData.items}\n*Total:* Rs. ${orderData.total || "N/A"}\n*Address:* ${orderData.address}\n\n_Check Google Sheets for full details._`;

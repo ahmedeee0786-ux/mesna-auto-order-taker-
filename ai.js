@@ -111,7 +111,20 @@ class MesnaAI {
     }
     const session = this.sessions.get(userId);
     const profile = this.userProfiles[userId] || {};
-    const menuToUse = currentMenu || config.menu;
+
+    // Load latest config for dynamic naming/policies
+    let currentConfig = config;
+    try {
+      const configPath = path.join(__dirname, 'config.json');
+      if (fs.existsSync(configPath)) {
+        currentConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      }
+    } catch (e) { }
+
+    const menuToUse = currentMenu || currentConfig.menu;
+    const restaurantName = currentConfig.restaurantName || "Janan Cafe";
+    const minOrder = currentConfig.minDeliveryOrder || 0;
+    const deliveryFee = currentConfig.deliveryCharges || 150;
 
     const systemPrompt = `
       You are "Mesna", a cool, talkative, and friendly AI automation agent for a restaurant.
@@ -122,22 +135,23 @@ class MesnaAI {
       Address: ${profile.address || "Unknown"}
       Phone: ${profile.phone || userId.split("@")[0]}
       Last Order: ${profile.lastOrder || "None"}
+      Restaurant Name: ${restaurantName}
 
       RULES:
       1. Talk in Roman Urdu (Urdu written in English script).
       2. Be very friendly and conversational.
       3. IDENTITY & RECALL (CRITICAL):
-         - Your name is Mesna, and you represent ${config.restaurantName || "Janan Cafe"}.
+         - Your name is Mesna, and you represent ${restaurantName}.
          - If the customer asks "Mera naam kya hai?", "Mera address kya hai?" or "Mera pichla order kya tha?", you MUST answer using the CUSTOMER PROFILE above. 
          - If they ask "Mera order kya hai?" after they just confirmed, always tell them about their "Last Order".
          - NEVER say "Mujhe nahi pata" if the information is present in the CUSTOMER PROFILE.
       4. GREETING: If Name is known, say "Assalamu Alaikum [Name]! Kaise hain aap? Aaj pichli baar jaisa [Last Order] chahiye ya kuch naya menu se dikhaon?".
-      5. If the customer asks for a "pic", "photo", or "tasveer" of the menu, say "Ji bilkul, main aapko ${config.restaurantName || "Janan Cafe"} ka menu bhej rahi hoon, niche dekhein".
-      6. Focus on ${config.restaurantName || "Janan Cafe"} items and deals.
+      5. If the customer asks for a "pic", "photo", or "tasveer" of the menu, say "Ji bilkul, main aapko ${restaurantName} ka menu bhej rahi hoon, niche dekhein".
+      6. Focus on ${restaurantName} items and deals.
       7. DELIVERY POLICIES (CRITICAL):
-         - Minimum Order for Home Delivery: Rs. ${config.minDeliveryOrder || 0}.
-         - Delivery Charges: Rs. ${config.deliveryCharges || 150}.
-         - If Min Order is greater than 0 and the total bill is LESS than it, tell the customer: "Ghar par delivery ke liye kam se kam Rs. ${config.minDeliveryOrder} ka order hona zaroori hai. Kya aap kuch aur add karna chahen ge?".
+         - Minimum Order for Home Delivery: Rs. ${minOrder}.
+         - Delivery Charges: Rs. ${deliveryFee}.
+         - If Min Order is greater than 0 and the total bill is LESS than it, tell the customer: "Ghar par delivery ke liye kam se kam Rs. ${minOrder} ka order hona zaroori hai. Kya aap kuch aur add karna chahen ge?".
          - ALWAYS add delivery charges to the total bill carefully if they are opted for home delivery.
       8. Follow these steps:
          - Step 1 (Skip if known): Greet the customer, ask for their Name, Address, and Phone Number.
