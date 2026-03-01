@@ -292,28 +292,33 @@
         }
 
         function saveSettings() {
-            const name = document.getElementById('restaurant-name').value;
-            const adminPhone = document.getElementById('admin-phone').value;
-            const key = document.getElementById('api-key').value;
-            const deliveryCharges = document.getElementById('delivery-charges').value;
-            const minDeliveryOrder = document.getElementById('min-delivery').value;
-            let sheetId = document.getElementById('sheet-id').value;
+            try {
+                const name = document.getElementById('restaurant-name').value;
+                const adminPhone = document.getElementById('admin-phone').value;
+                const key = document.getElementById('api-key').value;
+                const deliveryCharges = document.getElementById('delivery-charges').value;
+                const minDeliveryOrder = document.getElementById('min-delivery').value;
+                let sheetId = document.getElementById('sheet-id').value;
 
-            const status = document.getElementById('save-status');
-            status.style.display = 'block';
-            status.textContent = 'Saving settings...';
-            status.style.color = '#38bdf8';
+                const status = document.getElementById('save-status');
+                status.style.display = 'block';
+                status.textContent = 'Saving settings...';
+                status.style.color = '#38bdf8';
 
-            // Clean URL to ID
-            if (sheetId && sheetId.includes('/d/')) {
-                const match = sheetId.match(/\/d\/([a-zA-Z0-9-_]+)/);
-                if (match && match[1]) {
-                    sheetId = match[1];
-                    document.getElementById('sheet-id').value = sheetId;
+                // Clean URL to ID
+                if (sheetId && sheetId.includes('/d/')) {
+                    const match = sheetId.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                    if (match && match[1]) {
+                        sheetId = match[1];
+                        document.getElementById('sheet-id').value = sheetId;
+                    }
                 }
-            }
 
-            socket.emit('save-settings', { name, adminPhone, key, deliveryCharges, minDeliveryOrder, sheetId });
+                socket.emit('save-settings', { name, adminPhone, key, deliveryCharges, minDeliveryOrder, sheetId });
+            } catch (err) {
+                console.error("Dashboard error:", err);
+                alert("Error: " + err.message);
+            }
         }
 
         // --- Notification Logic (v5.0) ---
@@ -354,6 +359,8 @@
         `;
         document.head.appendChild(style);
     </script>
+    <div style="text-align: center; margin-bottom: 2rem; opacity: 0.3; font-size: 0.7rem;">Build v6.0.8 - Ready for
+        Resale</div>
 </body>
 
 </html>
