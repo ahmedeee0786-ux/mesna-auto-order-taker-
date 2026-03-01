@@ -55,6 +55,16 @@ function startDashboard(port = 3000) {
         socket.on('save-settings', (data) => {
             console.log('Saving settings:', data);
 
+            // Extract Google Sheet ID if it's a URL
+            let sheetId = data.sheetId;
+            if (sheetId && sheetId.includes('/d/')) {
+                const match = sheetId.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                if (match && match[1]) {
+                    sheetId = match[1];
+                    console.log('Extracted Sheet ID:', sheetId);
+                }
+            }
+
             // Update .env for API Key if provided
             if (data.key) {
                 let envContent = fs.readFileSync(path.join(__dirname, '.env'), 'utf8');
@@ -63,16 +73,17 @@ function startDashboard(port = 3000) {
             }
 
             // Update config.json for Restaurant Name and Policies
-            if (data.name || data.deliveryCharges || data.minDeliveryOrder || data.adminPhone || data.sheetId) {
+            if (data.name || data.deliveryCharges || data.minDeliveryOrder || data.adminPhone || sheetId) {
                 const configPath = path.join(__dirname, 'config.json');
                 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
                 if (data.name) config.restaurantName = data.name;
-                if (data.deliveryCharges) config.deliveryCharges = parseInt(data.deliveryCharges);
-                if (data.minDeliveryOrder) config.minDeliveryOrder = parseInt(data.minDeliveryOrder);
+                if (data.deliveryCharges) config.deliveryCharges = parseInt(data.deliveryCharges) || 0;
+                if (data.minDeliveryOrder) config.minDeliveryOrder = parseInt(data.minDeliveryOrder) || 0;
                 if (data.adminPhone) config.adminPhone = data.adminPhone;
-                if (data.sheetId) config.sheetId = data.sheetId;
+                if (sheetId) config.sheetId = sheetId;
 
                 fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+                socket.emit('settings-saved', { success: true, sheetId: sheetId });
             }
         });
     });

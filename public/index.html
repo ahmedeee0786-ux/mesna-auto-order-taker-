@@ -270,6 +270,17 @@
             document.getElementById('logout-container').style.display = 'block';
         });
 
+        socket.on('settings-saved', (data) => {
+            const status = document.getElementById('save-status');
+            if (data.success) {
+                if (data.sheetId) document.getElementById('sheet-id').value = data.sheetId;
+                status.style.display = 'block';
+                status.textContent = 'Settings saved successfully!';
+                status.style.color = '#4ade80';
+                setTimeout(() => { status.style.display = 'none'; }, 3000);
+            }
+        });
+
         function requestLogout() {
             if (confirm("Are you sure? This will LOGOUT the current WhatsApp and restart for a new QR scan.")) {
                 socket.emit('request-logout');
@@ -282,13 +293,19 @@
             const adminPhone = document.getElementById('admin-phone').value;
             const key = document.getElementById('api-key').value;
             const deliveryCharges = document.getElementById('delivery-charges').value;
-            const sheetId = document.getElementById('sheet-id').value;
-            const status = document.getElementById('save-status');
+            const minDeliveryOrder = document.getElementById('min-delivery').value;
+            let sheetId = document.getElementById('sheet-id').value;
+
+            // Clean URL to ID
+            if (sheetId && sheetId.includes('/d/')) {
+                const match = sheetId.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                if (match && match[1]) {
+                    sheetId = match[1];
+                    document.getElementById('sheet-id').value = sheetId;
+                }
+            }
 
             socket.emit('save-settings', { name, adminPhone, key, deliveryCharges, minDeliveryOrder, sheetId });
-
-            status.style.display = 'block';
-            setTimeout(() => { status.style.display = 'none'; }, 3000);
         }
 
         // --- Notification Logic (v5.0) ---
