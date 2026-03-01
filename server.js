@@ -99,7 +99,6 @@ function startDashboard(port = 3000) {
                     if (data.deliveryCharges !== undefined) config.deliveryCharges = parseInt(data.deliveryCharges) || 0;
                     if (data.minDeliveryOrder !== undefined) config.minDeliveryOrder = parseInt(data.minDeliveryOrder) || 0;
                     if (data.adminPhone !== undefined) config.adminPhone = data.adminPhone;
-                    if (data.key) config.apiKey = data.key; // Store API Key in config as fallback for Railway
                     if (sheetId) config.sheetId = sheetId;
 
                     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
