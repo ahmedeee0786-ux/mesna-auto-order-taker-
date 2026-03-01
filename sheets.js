@@ -1,15 +1,26 @@
-const { GoogleSpreadsheet } = require("google-spreadsheet");
-const { JWT } = require("google-auth-library");
 require("dotenv").config();
 
 class SheetsManager {
     constructor() {
         this.doc = null;
+        this.GoogleSpreadsheet = null;
+        this.JWT = null;
+    }
+
+    async loadDeps() {
+        if (!this.GoogleSpreadsheet) {
+            const gs = await import("google-spreadsheet");
+            this.GoogleSpreadsheet = gs.GoogleSpreadsheet;
+            const auth = await import("google-auth-library");
+            this.JWT = auth.JWT;
+        }
     }
 
     async init() {
         if (this.doc) return;
         try {
+            await this.loadDeps();
+
             let credentials;
             if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
                 // Railway/Cloud: credentials stored as env var
@@ -26,13 +37,13 @@ class SheetsManager {
             }
             const privateKey = credentials.private_key.replace(/\\n/g, '\n');
 
-            const auth = new JWT({
+            const auth = new this.JWT({
                 email: credentials.client_email,
                 key: privateKey,
                 scopes: ["https://www.googleapis.com/auth/spreadsheets"],
             });
 
-            this.doc = new GoogleSpreadsheet(process.env.GOOGLE_SHEET_ID, auth);
+            this.doc = new this.GoogleSpreadsheet(process.env.GOOGLE_SHEET_ID, auth);
             await this.doc.loadInfo();
             console.log(`Connected to Sheet: ${this.doc.title}`);
         } catch (error) {
