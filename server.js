@@ -33,6 +33,12 @@ function startDashboard(port = 3000) {
 
             if (fs.existsSync(configPath)) {
                 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+
+                // Fallback for email if not found in env/local file
+                if (serviceEmail === "Not Found" && config.serviceEmail) {
+                    serviceEmail = config.serviceEmail;
+                }
+
                 socket.emit('settings', {
                     name: config.restaurantName,
                     adminPhone: config.adminPhone,
