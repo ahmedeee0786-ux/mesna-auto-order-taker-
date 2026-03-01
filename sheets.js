@@ -1,10 +1,12 @@
-require("dotenv").config();
+const fs = require('fs');
+const path = require('path');
 
 class SheetsManager {
     constructor() {
         this.doc = null;
         this.GoogleSpreadsheet = null;
         this.JWT = null;
+        this.currentSheetId = null;
     }
 
     async loadDeps() {
@@ -17,23 +19,35 @@ class SheetsManager {
     }
 
     async init() {
-        if (this.doc) return;
         try {
             await this.loadDeps();
 
+            // Load latest sheet ID from config
+            const configPath = path.join(__dirname, 'config.json');
+            let sheetId = process.env.GOOGLE_SHEET_ID;
+            if (fs.existsSync(configPath)) {
+                try {
+                    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+                    if (config.sheetId) sheetId = config.sheetId;
+                } catch (e) { }
+            }
+
+            // Skip if already initialized with SAME ID
+            if (this.doc && this.currentSheetId === sheetId) return;
+
+            console.log(`Initializing Google Sheet: ${sheetId}`);
+            this.currentSheetId = sheetId;
+
             let credentials;
             if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
-                // Railway/Cloud: credentials stored as env var
                 credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
             } else {
-                // Local: credentials from file
-                const fs = require('fs');
                 const credPath = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_PATH || './service-account.json';
                 if (!fs.existsSync(credPath)) {
-                    console.log("⚠️ service-account.json not found. Google Sheets disabled.");
+                    console.log("⚠️ service-account.json not found.");
                     return;
                 }
-                credentials = require(credPath);
+                credentials = JSON.parse(fs.readFileSync(credPath, 'utf8'));
             }
             const privateKey = credentials.private_key.replace(/\\n/g, '\n');
 
@@ -43,11 +57,11 @@ class SheetsManager {
                 scopes: ["https://www.googleapis.com/auth/spreadsheets"],
             });
 
-            this.doc = new this.GoogleSpreadsheet(process.env.GOOGLE_SHEET_ID, auth);
+            this.doc = new this.GoogleSpreadsheet(sheetId, auth);
             await this.doc.loadInfo();
             console.log(`Connected to Sheet: ${this.doc.title}`);
         } catch (error) {
-            console.error("⚠️ Google Sheets error (non-fatal):", error.message);
+            console.error("⚠️ Google Sheets error:", error.message);
             this.doc = null;
         }
     }

@@ -195,6 +195,13 @@
                     <input type="password" id="api-key" placeholder="••••••••••••••••"
                         style="width: 100%; padding: 0.8rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: white;">
                 </div>
+                <div>
+                    <label
+                        style="display: block; font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-bottom: 0.3rem;">Google
+                        Sheet ID (For Orders)</label>
+                    <input type="text" id="sheet-id" placeholder="1gPdFWQk52ARzHDTS2..."
+                        style="width: 100%; padding: 0.8rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: white;">
+                </div>
                 <div style="display: flex; gap: 1rem;">
                     <div style="flex: 1;">
                         <label
@@ -231,6 +238,14 @@
         const statusBadge = document.getElementById('status');
         const instruction = document.getElementById('instruction');
 
+        socket.on('settings', (data) => {
+            if (data.name) document.getElementById('restaurant-name').value = data.name;
+            if (data.adminPhone) document.getElementById('admin-phone').value = data.adminPhone;
+            if (data.sheetId) document.getElementById('sheet-id').value = data.sheetId;
+            if (data.deliveryCharges) document.getElementById('delivery-charges').value = data.deliveryCharges;
+            if (data.minDeliveryOrder) document.getElementById('min-delivery').value = data.minDeliveryOrder;
+        });
+
         socket.on('qr', (qrData) => {
             qrContainer.innerHTML = `<img src="${qrData}" alt="WhatsApp QR Code" class="scanning">`;
             statusBadge.textContent = 'Awaiting Scan';
@@ -258,10 +273,10 @@
             const adminPhone = document.getElementById('admin-phone').value;
             const key = document.getElementById('api-key').value;
             const deliveryCharges = document.getElementById('delivery-charges').value;
-            const minDeliveryOrder = document.getElementById('min-delivery').value;
+            const sheetId = document.getElementById('sheet-id').value;
             const status = document.getElementById('save-status');
 
-            socket.emit('save-settings', { name, adminPhone, key, deliveryCharges, minDeliveryOrder });
+            socket.emit('save-settings', { name, adminPhone, key, deliveryCharges, minDeliveryOrder, sheetId });
 
             status.style.display = 'block';
             setTimeout(() => { status.style.display = 'none'; }, 3000);

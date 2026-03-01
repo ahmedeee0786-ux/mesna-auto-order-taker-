@@ -14,6 +14,24 @@ function startDashboard(port = 3000) {
     io.on('connection', (socket) => {
         console.log('Dashboard connected');
 
+        // Send current settings to pre-fill the form
+        try {
+            const configPath = path.join(__dirname, 'config.json');
+            if (fs.existsSync(configPath)) {
+                const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+                // Don't send the full config if it has sensitive data, but these are safe
+                socket.emit('settings', {
+                    name: config.restaurantName,
+                    adminPhone: config.adminPhone,
+                    deliveryCharges: config.deliveryCharges,
+                    minDeliveryOrder: config.minDeliveryOrder,
+                    sheetId: config.sheetId
+                });
+            }
+        } catch (e) {
+            console.error("Error sending settings to dashboard:", e);
+        }
+
         socket.on('save-settings', (data) => {
             console.log('Saving settings:', data);
 
@@ -25,14 +43,16 @@ function startDashboard(port = 3000) {
             }
 
             // Update config.json for Restaurant Name and Policies
-            if (data.name || data.deliveryCharges || data.minDeliveryOrder || data.adminPhone) {
-                const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
+            if (data.name || data.deliveryCharges || data.minDeliveryOrder || data.adminPhone || data.sheetId) {
+                const configPath = path.join(__dirname, 'config.json');
+                const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
                 if (data.name) config.restaurantName = data.name;
                 if (data.deliveryCharges) config.deliveryCharges = parseInt(data.deliveryCharges);
                 if (data.minDeliveryOrder) config.minDeliveryOrder = parseInt(data.minDeliveryOrder);
                 if (data.adminPhone) config.adminPhone = data.adminPhone;
+                if (data.sheetId) config.sheetId = data.sheetId;
 
-                fs.writeFileSync(path.join(__dirname, 'config.json'), JSON.stringify(config, null, 2));
+                fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
             }
         });
     });
