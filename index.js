@@ -262,10 +262,18 @@ const handleMessage = async (msg) => {
                     const currentConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
                     if (currentConfig.adminPhone) {
-                        const adminId = `${currentConfig.adminPhone}@c.us`;
+                        // Ensure phone is digits only for @c.us format
+                        const cleanPhone = currentConfig.adminPhone.replace(/\D/g, '');
+                        const adminId = `${cleanPhone}@c.us`;
+
                         const adminMsg = `🚨 *NEW ORDER RECEIVED!*\n\n*Customer:* ${orderData.name}\n*Phone:* ${orderData.phone}\n*Items:* ${orderData.items}\n*Total:* Rs. ${orderData.total || "N/A"}\n*Address:* ${orderData.address}\n\n_Check Google Sheets for full details._`;
-                        await client.sendMessage(adminId, adminMsg);
-                        console.log(`Admin notified at ${adminId}`);
+
+                        try {
+                            await client.sendMessage(adminId, adminMsg);
+                            console.log(`✅ Admin notified at ${adminId}`);
+                        } catch (sendErr) {
+                            console.error(`❌ client.sendMessage to Admin failed (${adminId}):`, sendErr.message);
+                        }
                     }
 
                     // Dashboard Alert
