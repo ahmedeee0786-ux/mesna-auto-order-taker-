@@ -172,6 +172,29 @@
         </div>
 
         <div class="qr-card" style="max-width: 600px; text-align: left;">
+            <h3>📸 Menu Image</h3>
+            <p class="loading-text" style="margin-bottom: 1.5rem;">Update the menu photo sent to customers. The bot will
+                refresh automatically after upload.</p>
+
+            <div
+                style="text-align: center; margin-bottom: 1.5rem; background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 1rem;">
+                <img id="menu-preview" src="/menu.jpg?t=${Date.now()}" alt="Current Menu"
+                    style="max-width: 100%; max-height: 200px; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.1);">
+                <p style="font-size: 0.7rem; color: rgba(255,255,255,0.4); margin-top: 0.5rem;">Current Menu Photo</p>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <input type="file" id="menu-upload" accept="image/*" style="display: none;"
+                    onchange="handleMenuUpload(this)">
+                <button onclick="document.getElementById('menu-upload').click()"
+                    style="background: rgba(255,255,255,0.05); color: white; border: 1px dashed rgba(255,255,255,0.3); padding: 1rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: all 0.2s; text-align: center;">
+                    📁 SELECT NEW MENU IMAGE
+                </button>
+                <p id="upload-status" style="font-size: 0.8rem; text-align: center; display: none;"></p>
+            </div>
+        </div>
+
+        <div class="qr-card" style="max-width: 600px; text-align: left;">
             <h3>⚙️ Bot Settings</h3>
             <div style="display: flex; flex-direction: column; gap: 1rem;">
                 <div>
@@ -320,6 +343,45 @@
                 alert("Error: " + err.message);
             }
         }
+
+        function handleMenuUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            if (file.size > 5 * 1024 * 1024) {
+                alert("Image too large! Please upload a photo smaller than 5MB.");
+                return;
+            }
+
+            const status = document.getElementById('upload-status');
+            status.style.display = 'block';
+            status.textContent = '⏳ Uploading menu...';
+            status.style.color = '#38bdf8';
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const base64Image = e.target.result;
+                socket.emit('upload-menu', { image: base64Image });
+            };
+            reader.readAsDataURL(file);
+        }
+
+        socket.on('upload-success', (data) => {
+            const status = document.getElementById('upload-status');
+            if (data.success) {
+                status.textContent = '✅ Menu updated successfully! Bot is refreshing...';
+                status.style.color = '#4ade80';
+
+                // Refresh preview with cache-buster
+                const preview = document.getElementById('menu-preview');
+                preview.src = `/menu.jpg?t=${Date.now()}`;
+
+                setTimeout(() => { status.style.display = 'none'; }, 5000);
+            } else {
+                status.textContent = '❌ Upload failed: ' + data.error;
+                status.style.color = '#f87171';
+            }
+        });
 
         // --- Notification Logic (v5.0) ---
         socket.on('order-alert', (data) => {

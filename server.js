@@ -86,7 +86,6 @@ function startDashboard(port = 3000) {
                         fs.writeFileSync(envPath, envContent);
                         console.log('.env updated with new API key');
                     } else {
-                        // If no .env, we just let it be (Railway uses env vars directly)
                         console.log('Skipping .env update: file not found (Standard for Railway)');
                     }
                 }
@@ -111,6 +110,22 @@ function startDashboard(port = 3000) {
             } catch (err) {
                 console.error('CRITICAL ERROR saving settings:', err);
                 socket.emit('settings-saved', { success: false, error: err.message });
+            }
+        });
+
+        socket.on('upload-menu', (data) => {
+            try {
+                console.log('Received menu image upload request');
+                const base64Data = data.image.replace(/^data:image\/\w+;base64,/, "");
+                const buffer = Buffer.from(base64Data, 'base64');
+                const filePath = path.join(__dirname, 'menu.jpg');
+
+                fs.writeFileSync(filePath, buffer);
+                console.log('✅ Menu image updated: menu.jpg');
+                socket.emit('upload-success', { success: true });
+            } catch (err) {
+                console.error('Error saving menu image:', err);
+                socket.emit('upload-success', { success: false, error: err.message });
             }
         });
     });
