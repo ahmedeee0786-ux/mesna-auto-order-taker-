@@ -8,23 +8,30 @@ const config = require("./config.json");
 
 class MesnaAI {
   constructor(apiKey, provider) {
+    const configPath = path.join(__dirname, 'config.json');
+    let dynamicConfig = {};
+    if (fs.existsSync(configPath)) {
+      try { dynamicConfig = JSON.parse(fs.readFileSync(configPath, 'utf8')); } catch (e) { }
+    }
+
     this.provider = provider || process.env.AI_PROVIDER || "openai";
-    this.apiKey = apiKey || process.env.AI_API_KEY;
-    this.sessions = new Map(); // Store user state/history
+    this.apiKey = dynamicConfig.apiKey || apiKey || process.env.AI_API_KEY;
+    this.restaurantName = dynamicConfig.restaurantName || "Janan Cafe";
+
+    this.sessions = new Map();
     this.profilesPath = path.join(__dirname, 'profiles.json');
     this.userProfiles = this.loadProfiles();
 
     if (this.provider === "gemini") {
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || this.apiKey);
+      const genKey = process.env.GEMINI_API_KEY || this.apiKey;
+      const genAI = new GoogleGenerativeAI(genKey);
       this.model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     } else {
-      // Reverting to OpenAI as the primary constructor, ensuring timeout is present.
-      // The previous conditional for Gemini is removed as per the instruction's intent to "revert constructor to OpenAI".
       const baseURL = process.env.AI_BASE_URL || "https://api.bytez.com/v1";
       this.openai = new OpenAI({
         apiKey: this.apiKey,
         baseURL: baseURL,
-        timeout: 20000 // 20 seconds timeout to prevent hanging
+        timeout: 20000
       });
     }
   }

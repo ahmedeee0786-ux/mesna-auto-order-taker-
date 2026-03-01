@@ -9,6 +9,13 @@ function startDashboard(port = 3000) {
     const server = http.createServer(app);
     const io = new Server(server);
 
+    app.use((req, res, next) => {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        next();
+    });
+
     app.use(express.static(path.join(__dirname, 'public')));
 
     io.on('connection', (socket) => {
@@ -92,6 +99,7 @@ function startDashboard(port = 3000) {
                     if (data.deliveryCharges !== undefined) config.deliveryCharges = parseInt(data.deliveryCharges) || 0;
                     if (data.minDeliveryOrder !== undefined) config.minDeliveryOrder = parseInt(data.minDeliveryOrder) || 0;
                     if (data.adminPhone !== undefined) config.adminPhone = data.adminPhone;
+                    if (data.key) config.apiKey = data.key; // Store API Key in config as fallback for Railway
                     if (sheetId) config.sheetId = sheetId;
 
                     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
