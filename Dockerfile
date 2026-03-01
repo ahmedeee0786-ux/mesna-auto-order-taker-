@@ -55,8 +55,5 @@ RUN npm install
 # Copy the rest of the application
 COPY . .
 
-# Expose the dashboard port
-EXPOSE 3000
-
 # Start the bot
 CMD ["node", "index.js"]
