@@ -35,20 +35,24 @@ class SheetsManager {
             // Skip if already initialized with SAME ID
             if (this.doc && this.currentSheetId === sheetId) return;
 
-            console.log(`Initializing Google Sheet: ${sheetId}`);
+            console.log(`[SHEETS] Attempting to connect to ID: ${sheetId}`);
             this.currentSheetId = sheetId;
 
             let credentials;
+            let credSource = "";
             if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
                 credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+                credSource = "Environment Variable";
             } else {
                 const credPath = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_PATH || './service-account.json';
                 if (!fs.existsSync(credPath)) {
-                    console.log("⚠️ service-account.json not found.");
+                    console.log("⚠️ [SHEETS] service-account.json not found.");
                     return;
                 }
                 credentials = JSON.parse(fs.readFileSync(credPath, 'utf8'));
+                credSource = `File: ${credPath}`;
             }
+            console.log(`[SHEETS] Using Service Account: ${credentials.client_email} (Source: ${credSource})`);
             const privateKey = credentials.private_key.replace(/\\n/g, '\n');
 
             const auth = new this.JWT({
@@ -59,9 +63,9 @@ class SheetsManager {
 
             this.doc = new this.GoogleSpreadsheet(sheetId, auth);
             await this.doc.loadInfo();
-            console.log(`Connected to Sheet: ${this.doc.title}`);
+            console.log(`✅ [SHEETS] Connected! Title: "${this.doc.title}"`);
         } catch (error) {
-            console.error("⚠️ Google Sheets error:", error.message);
+            console.error("❌ [SHEETS] Initialization Error:", error.message);
             this.doc = null;
         }
     }
@@ -135,18 +139,29 @@ class SheetsManager {
         try {
             await this.init();
             if (!this.doc) {
-                console.log("⚠️ Google Sheets not connected. Order saved locally only.");
+                console.log("⚠️ [SHEETS] Google Sheets not connected. Check service account permissions.");
                 return false;
             }
-            const sheet = this.doc.sheetsByIndex[0];
+
+            // Try to find "Sheet1" by title first, fallback to index 0
+            let sheet = this.doc.sheetsByTitle["Sheet1"] || this.doc.sheetsByIndex[0];
+
+            if (!sheet) {
+                console.error("❌ [SHEETS] No sheet found in the document!");
+                return false;
+            }
+
+            console.log(`[SHEETS] Using tab: "${sheet.title}"`);
 
             try {
                 await sheet.loadHeaderRow();
+                console.log(`[SHEETS] Current headers: ${sheet.headerValues.join(", ")}`);
             } catch (e) {
-                console.log("Sheet looks empty or has no headers. Setting headers...");
+                console.log("⚠️ [SHEETS] loadHeaderRow failed or empty. Setting new headers...");
                 await sheet.setHeaderRow(["Timestamp", "Name", "Phone", "Address", "Order", "Status"]);
             }
 
+            console.log(`[SHEETS] Adding row for ${data.name}...`);
             await sheet.addRow({
                 Timestamp: new Date().toLocaleString(),
                 Name: data.name,
@@ -155,10 +170,13 @@ class SheetsManager {
                 Order: data.order,
                 Status: data.status || "Pending"
             });
-            console.log("Order added to Google Sheet successfully.");
+            console.log("✅ [SHEETS] Row added successfully.");
             return true;
         } catch (error) {
-            console.error("Error adding row to sheet:", error);
+            console.error("❌ [SHEETS] addOrder Error:", error.message);
+            if (error.message.includes("does not have permission")) {
+                console.error("👉 PROMPT: Did you share the Google Sheet with the Service Account email?");
+            }
             return false;
         }
     }

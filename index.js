@@ -224,14 +224,19 @@ const handleMessage = async (msg) => {
                     lastOrder: orderData.items // Added lastOrder for Smart Memory
                 });
 
-                await sheets.addOrder({
+                const sheetResult = await sheets.addOrder({
                     name: orderData.name,
                     phone: orderData.phone || userId.split("@")[0],
                     address: orderData.address,
                     order: `${orderData.items} (Total: Rs. ${orderData.total || "N/A"})`,
                     status: "Pending"
                 });
-                console.log("Successfully logged order to sheet.");
+
+                if (sheetResult) {
+                    console.log("✅ Successfully logged order to Google Sheet.");
+                } else {
+                    console.log("❌ Failed to log order to Google Sheet. Check console for errors.");
+                }
 
                 // Local Backup (v2.3)
                 try {
