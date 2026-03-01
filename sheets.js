@@ -46,7 +46,8 @@ class SheetsManager {
             } else {
                 const credPath = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_PATH || './service-account.json';
                 if (!fs.existsSync(credPath)) {
-                    console.log("⚠️ [SHEETS] service-account.json not found.");
+                    console.log("⚠️ [SHEETS] service-account.json not found AND no GOOGLE_SERVICE_ACCOUNT_JSON env var detected.");
+                    console.log("👉 PROMPT: Please add the 'GOOGLE_SERVICE_ACCOUNT_JSON' Variable in Railway and paste your JSON content there.");
                     return;
                 }
                 credentials = JSON.parse(fs.readFileSync(credPath, 'utf8'));
