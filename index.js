@@ -22,36 +22,39 @@ const { execSync } = require('child_process');
 let executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || undefined;
 
 if (!executablePath) {
-    const chromiumPaths = [
-        "/usr/bin/chromium",                                       // Linux / Docker
-        "/usr/bin/chromium-browser",                               // Linux alt
-        "/usr/bin/google-chrome-stable",                           // Linux Chrome
-        "/data/data/com.termux/files/usr/bin/chromium",            // Termux
-        "/data/data/com.termux/files/usr/bin/chromium-browser",    // Termux alt
-    ];
-
-    for (const p of chromiumPaths) {
-        if (fs.existsSync(p)) {
-            executablePath = p;
-            break;
+    // Nixpacks fallback: chromium path includes a hash, use 'which' to find it
+    try {
+        executablePath = execSync('which chromium').toString().trim();
+        if (executablePath) {
+            console.log(`Found chromium via 'which': ${executablePath}`);
         }
+    } catch (e) {
+        // Not found via which
+        console.log("Chromium not found via 'which' command.");
     }
 
-    // Nixpacks fallback: chromium path includes a hash, use 'which' to find it
     if (!executablePath) {
-        try {
-            executablePath = execSync('which chromium').toString().trim();
-        } catch (e) {
-            // Not found via which either
+        const chromiumPaths = [
+            "/usr/bin/chromium",                                       // Linux / Docker
+            "/usr/bin/chromium-browser",                               // Linux alt
+            "/usr/bin/google-chrome-stable",                           // Linux Chrome
+            "/data/data/com.termux/files/usr/bin/chromium",            // Termux
+            "/data/data/com.termux/files/usr/bin/chromium-browser",    // Termux alt
+        ];
+
+        for (const p of chromiumPaths) {
+            if (fs.existsSync(p)) {
+                executablePath = p;
+                break;
+            }
         }
     }
 }
 
 if (executablePath) {
-    console.log(`✅ Browser found: ${executablePath}`);
+    console.log(`✅ Browser found at: ${executablePath}`);
 } else {
-    console.log("💻 Using default Puppeteer Chromium (Windows/Mac)");
-    executablePath = undefined;
+    console.log("💻 No system browser found, using default Puppeteer Chromium (Windows/Mac)");
 }
 
 
@@ -60,9 +63,17 @@ const clientId = process.env.SESSION_ID || 'default-client';
 const client = new Client({
     authStrategy: new LocalAuth({ clientId: clientId }),
     puppeteer: {
-        headless: true, // Invisible window (required for Termux, good for background PC)
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--no-zygote', '--single-process'],
-        executablePath: executablePath
+        executablePath: executablePath,
+        headless: true,
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--disable-gpu'
+        ]
     }
 });
 

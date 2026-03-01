@@ -1,7 +1,8 @@
 [phases.setup]
 nixPkgs = [
-    "...",
+    "nodejs",
     "chromium",
+    "glib",
     "nss",
     "nspr",
     "mesa",
@@ -35,3 +36,4 @@ cmd = "node index.js"
 
 [variables]
 PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
+NODE_ENV = "production"
