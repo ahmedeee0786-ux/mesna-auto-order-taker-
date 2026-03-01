@@ -17,15 +17,29 @@ function startDashboard(port = 3000) {
         // Send current settings to pre-fill the form
         try {
             const configPath = path.join(__dirname, 'config.json');
+            let serviceEmail = "Not Found";
+
+            // Extract email from service account JSON
+            if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+                try {
+                    serviceEmail = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON).client_email;
+                } catch (e) { }
+            } else {
+                const credPath = path.join(__dirname, 'service-account.json');
+                if (fs.existsSync(credPath)) {
+                    serviceEmail = JSON.parse(fs.readFileSync(credPath, 'utf8')).client_email;
+                }
+            }
+
             if (fs.existsSync(configPath)) {
                 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-                // Don't send the full config if it has sensitive data, but these are safe
                 socket.emit('settings', {
                     name: config.restaurantName,
                     adminPhone: config.adminPhone,
                     deliveryCharges: config.deliveryCharges,
                     minDeliveryOrder: config.minDeliveryOrder,
-                    sheetId: config.sheetId
+                    sheetId: config.sheetId,
+                    serviceEmail: serviceEmail
                 });
             }
         } catch (e) {

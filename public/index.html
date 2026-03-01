@@ -201,6 +201,14 @@
                         Sheet ID (For Orders)</label>
                     <input type="text" id="sheet-id" placeholder="1gPdFWQk52ARzHDTS2..."
                         style="width: 100%; padding: 0.8rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: white;">
+                    <div id="setup-instruction"
+                        style="margin-top: 0.5rem; font-size: 0.75rem; color: #38bdf8; background: rgba(56, 189, 248, 0.1); padding: 0.8rem; border-radius: 0.5rem; border: 1px solid rgba(56, 189, 248, 0.2); line-height: 1.4;">
+                        <b>Setup Instruction:</b> Share your Google Sheet with the email below as an <b>Editor</b>, then
+                        paste the ID here.
+                        <div id="service-email-display"
+                            style="margin-top: 0.4rem; font-family: monospace; color: white; word-break: break-all;">
+                            Loading setup email...</div>
+                    </div>
                 </div>
                 <div style="display: flex; gap: 1rem;">
                     <div style="flex: 1;">
@@ -244,6 +252,7 @@
             if (data.sheetId) document.getElementById('sheet-id').value = data.sheetId;
             if (data.deliveryCharges) document.getElementById('delivery-charges').value = data.deliveryCharges;
             if (data.minDeliveryOrder) document.getElementById('min-delivery').value = data.minDeliveryOrder;
+            if (data.serviceEmail) document.getElementById('service-email-display').textContent = data.serviceEmail;
         });
 
         socket.on('qr', (qrData) => {
