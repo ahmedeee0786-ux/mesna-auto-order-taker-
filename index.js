@@ -228,8 +228,8 @@ const handleMessage = async (msg) => {
                     name: orderData.name,
                     phone: orderData.phone || userId.split("@")[0],
                     address: orderData.address,
-                    order: orderData.items,
-                    total: orderData.total
+                    order: `${orderData.items} (Total: Rs. ${orderData.total || "N/A"})`,
+                    status: "Pending"
                 });
                 console.log("Successfully logged order to sheet.");
 

@@ -144,7 +144,7 @@ class SheetsManager {
                 await sheet.loadHeaderRow();
             } catch (e) {
                 console.log("Sheet looks empty or has no headers. Setting headers...");
-                await sheet.setHeaderRow(["Timestamp", "Name", "Phone", "Address", "Order", "Total"]);
+                await sheet.setHeaderRow(["Timestamp", "Name", "Phone", "Address", "Order", "Status"]);
             }
 
             await sheet.addRow({
@@ -153,7 +153,7 @@ class SheetsManager {
                 Phone: data.phone,
                 Address: data.address,
                 Order: data.order,
-                Total: data.total || "N/A"
+                Status: data.status || "Pending"
             });
             console.log("Order added to Google Sheet successfully.");
             return true;
