@@ -272,12 +272,15 @@
 
         socket.on('settings-saved', (data) => {
             const status = document.getElementById('save-status');
+            status.style.display = 'block';
             if (data.success) {
                 if (data.sheetId) document.getElementById('sheet-id').value = data.sheetId;
-                status.style.display = 'block';
                 status.textContent = 'Settings saved successfully!';
                 status.style.color = '#4ade80';
                 setTimeout(() => { status.style.display = 'none'; }, 3000);
+            } else {
+                status.textContent = 'Error: ' + (data.error || 'Failed to save');
+                status.style.color = '#f87171';
             }
         });
 
@@ -295,6 +298,11 @@
             const deliveryCharges = document.getElementById('delivery-charges').value;
             const minDeliveryOrder = document.getElementById('min-delivery').value;
             let sheetId = document.getElementById('sheet-id').value;
+
+            const status = document.getElementById('save-status');
+            status.style.display = 'block';
+            status.textContent = 'Saving settings...';
+            status.style.color = '#38bdf8';
 
             // Clean URL to ID
             if (sheetId && sheetId.includes('/d/')) {
