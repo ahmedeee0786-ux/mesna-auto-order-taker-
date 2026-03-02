@@ -164,7 +164,7 @@ class SheetsManager {
 
             console.log(`[SHEETS] Adding row for ${data.name}...`);
             await sheet.addRow({
-                Timestamp: new Date().toLocaleString(),
+                Timestamp: new Date().toLocaleString('en-US', { timeZone: 'Asia/Karachi' }),
                 Name: data.name,
                 Phone: data.phone,
                 Address: data.address,

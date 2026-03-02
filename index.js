@@ -261,7 +261,7 @@ const handleMessage = async (msg) => {
                     localOrders.push({
                         ...orderData,
                         userId: userId,
-                        timestamp: new Date().toISOString()
+                        timestamp: new Date().toLocaleString('en-US', { timeZone: 'Asia/Karachi' })
                     });
                     fs.writeFileSync(localBackupPath, JSON.stringify(localOrders, null, 2));
                     console.log("Order backed up locally to orders.json");
