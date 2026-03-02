@@ -185,9 +185,22 @@ client.on("ready", async () => {
 });
 
 const processingUsers = new Set();
+const processedMessages = new Map(); // Simple cache: msgId -> timestamp
+
+// Cleanup old processed messages every 10 mins
+setInterval(() => {
+    const now = Date.now();
+    for (const [id, time] of processedMessages.entries()) {
+        if (now - time > 600000) processedMessages.delete(id);
+    }
+}, 600000);
 
 const handleMessage = async (msg) => {
     try {
+        const msgId = msg.id.id;
+        if (processedMessages.has(msgId)) return;
+        processedMessages.set(msgId, Date.now());
+
         await refreshMenu(); // Ensure we have latest menu/config for every message
         const contact = await msg.getContact();
         const userId = contact.id._serialized;
