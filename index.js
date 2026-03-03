@@ -8,6 +8,17 @@ const sheets = require("./sheets");
 const config = require("./config.json");
 require("dotenv").config();
 
+// --- Global State (v6.2) ---
+let isReady = false;
+let lastQR = null;
+const processingUsers = new Set();
+const processedMessages = new Map();
+
+// --- Dashboard Setup ---
+const startDashboard = require("./server");
+const port = process.env.PORT || 3000;
+const io = startDashboard(port);
+
 // --- Error Hardening (v6.1) ---
 process.on('uncaughtException', (err) => {
     console.error('🔥 CRITICAL: Uncaught Exception:', err);
@@ -123,17 +134,10 @@ try {
     console.error("❌ FAILED TO INITIALIZE WHATSAPP CLIENT:", err);
 }
 
-const startDashboard = require("./server");
-const port = process.env.PORT || 3000;
-const io = startDashboard(port);
-
 // --- Auto-QR Watchdog (v5.1) ---
-let isReady = false;
-let lastQR = null;
-
 const qrWatchdog = setInterval(() => {
     if (!isReady && lastQR) {
-        console.log("🔄 Auto-Refreshing QR for Dashboard (1 min pulse)...");
+        console.log("🔄 Auto-Refreshing QR for Dashboard (20 sec pulse)...");
         qrImage.toDataURL(lastQR, (err, url) => {
             if (!err) io.emit('qr', url);
         });
@@ -141,7 +145,7 @@ const qrWatchdog = setInterval(() => {
         clearInterval(qrWatchdog);
         console.log("✅ Watchdog cleared. Bot is active.");
     }
-}, 60000); // 1 minute
+}, 20000); // Faster pulse
 
 // --- Logout & State Sync Support (v5.2) ---
 io.on('connection', (socket) => {
@@ -192,16 +196,8 @@ async function refreshMenu() {
 }
 
 
-const processingUsers = new Set();
-const processedMessages = new Map(); // Simple cache: msgId -> timestamp
 
-// Cleanup old processed messages every 10 mins
-setInterval(() => {
-    const now = Date.now();
-    for (const [id, time] of processedMessages.entries()) {
-        if (now - time > 600000) processedMessages.delete(id);
-    }
-}, 600000);
+// Moved processing states to global
 
 const handleMessage = async (msg) => {
     try {
