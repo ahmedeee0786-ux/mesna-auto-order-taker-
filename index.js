@@ -77,106 +77,7 @@ if (executablePath) {
 }
 
 
-// Multi-Client Session Setup (v6.0)
-const clientId = process.env.SESSION_ID || 'default-client';
-let client;
-
-try {
-    client = new Client({
-        authStrategy: new LocalAuth({ clientId: clientId }),
-        puppeteer: {
-            executablePath: executablePath,
-            headless: true,
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
-                '--no-first-run',
-                '--no-zygote',
-                '--disable-gpu'
-            ]
-        }
-    });
-
-    // Re-bind listeners after client creation
-    client.on("qr", async (qr) => {
-        lastQR = qr;
-        console.log("QR Code received. Sending to dashboard...");
-        qrImage.toDataURL(qr, (err, url) => {
-            if (!err) io.emit('qr', url);
-        });
-        qrImage.toFile("./qr.png", qr, (err) => {
-            if (err) console.error("Error saving QR image:", err);
-        });
-    });
-
-    client.on("ready", async () => {
-        isReady = true;
-        console.log("Mesna Bot is ready!");
-        io.emit('ready');
-        try {
-            const logoPath = path.join(__dirname, 'logo.jpg');
-            if (fs.existsSync(logoPath)) {
-                const media = MessageMedia.fromFilePath(logoPath);
-                // setProfilePicture can sometimes fail due to library bugs (e.isNewsletter)
-                // We wrap it in a silent catch so the bot still works regardless
-                client.setProfilePicture(media).catch(e => {
-                    console.log("ℹ️ Profile picture could not be updated (Library Limitation). Skipping.");
-                });
-            }
-        } catch (err) { }
-        await refreshMenu();
-    });
-
-    client.on("message", handleMessage);
-
-    client.initialize();
-
-} catch (err) {
-    console.error("❌ FAILED TO INITIALIZE WHATSAPP CLIENT:", err);
-}
-
-// --- Auto-QR Watchdog (v5.1) ---
-const qrWatchdog = setInterval(() => {
-    if (!isReady && lastQR) {
-        console.log("🔄 Auto-Refreshing QR for Dashboard (20 sec pulse)...");
-        qrImage.toDataURL(lastQR, (err, url) => {
-            if (!err) io.emit('qr', url);
-        });
-    } else if (isReady) {
-        clearInterval(qrWatchdog);
-        console.log("✅ Watchdog cleared. Bot is active.");
-    }
-}, 20000); // Faster pulse
-
-// --- Logout & State Sync Support (v5.2) ---
-io.on('connection', (socket) => {
-    console.log("🖥️ Dashboard connected. Syncing state...");
-
-    // Send current state immediately to the new connection
-    if (isReady) {
-        socket.emit('ready');
-    } else if (lastQR) {
-        qrImage.toDataURL(lastQR, (err, url) => {
-            if (!err) socket.emit('qr', url);
-        });
-    }
-
-    socket.on('request-logout', async () => {
-        console.log("🔴 Logout requested! Cleaning session...");
-        try {
-            await client.logout();
-            console.log("✅ Session cleared. Bot will restart for new QR in 5 seconds.");
-            process.exit(0); // Triggers the Auto-Restart Loop in .bat
-        } catch (err) {
-            console.error("Logout failed:", err);
-            process.exit(1);
-        }
-    });
-});
-
-// Load menu dynamically
+// --- Core Logic & Helpers ---
 let restaurantMenu = config.menu;
 async function refreshMenu() {
     try {
@@ -198,9 +99,13 @@ async function refreshMenu() {
     }
 }
 
-
-
-// Moved processing states to global
+// Cleanup old processed messages every 10 mins
+setInterval(() => {
+    const now = Date.now();
+    for (const [id, time] of processedMessages.entries()) {
+        if (now - time > 600000) processedMessages.delete(id);
+    }
+}, 600000);
 
 const handleMessage = async (msg) => {
     try {
@@ -349,4 +254,107 @@ const handleMessage = async (msg) => {
         processingUsers.delete(userId);
     }
 };
+
+// Multi-Client Session Setup (v6.0)
+const clientId = process.env.SESSION_ID || 'default-client';
+let client;
+
+try {
+    client = new Client({
+        authStrategy: new LocalAuth({ clientId: clientId }),
+        puppeteer: {
+            executablePath: executablePath,
+            headless: true,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--no-first-run',
+                '--no-zygote',
+                '--disable-gpu'
+            ]
+        }
+    });
+
+    // Re-bind listeners after client creation
+    client.on("qr", async (qr) => {
+        lastQR = qr;
+        console.log("QR Code received. Sending to dashboard...");
+        qrImage.toDataURL(qr, (err, url) => {
+            if (!err) io.emit('qr', url);
+        });
+        qrImage.toFile("./qr.png", qr, (err) => {
+            if (err) console.error("Error saving QR image:", err);
+        });
+    });
+
+    client.on("ready", async () => {
+        isReady = true;
+        console.log("Mesna Bot is ready!");
+        io.emit('ready');
+        try {
+            const logoPath = path.join(__dirname, 'logo.jpg');
+            if (fs.existsSync(logoPath)) {
+                const media = MessageMedia.fromFilePath(logoPath);
+                // setProfilePicture can sometimes fail due to library bugs (e.isNewsletter)
+                // We wrap it in a silent catch so the bot still works regardless
+                client.setProfilePicture(media).catch(e => {
+                    console.log("ℹ️ Profile picture could not be updated (Library Limitation). Skipping.");
+                });
+            }
+        } catch (err) { }
+        await refreshMenu();
+    });
+
+    client.on("message", handleMessage);
+
+    client.initialize();
+
+} catch (err) {
+    console.error("❌ FAILED TO INITIALIZE WHATSAPP CLIENT:", err);
+}
+
+// --- Auto-QR Watchdog (v5.1) ---
+const qrWatchdog = setInterval(() => {
+    if (!isReady && lastQR) {
+        console.log("🔄 Auto-Refreshing QR for Dashboard (20 sec pulse)...");
+        qrImage.toDataURL(lastQR, (err, url) => {
+            if (!err) io.emit('qr', url);
+        });
+    } else if (isReady) {
+        clearInterval(qrWatchdog);
+        console.log("✅ Watchdog cleared. Bot is active.");
+    }
+}, 20000); // Faster pulse
+
+// --- Logout & State Sync Support (v5.2) ---
+io.on('connection', (socket) => {
+    console.log("🖥️ Dashboard connected. Syncing state...");
+
+    // Send current state immediately to the new connection
+    if (isReady) {
+        socket.emit('ready');
+    } else if (lastQR) {
+        qrImage.toDataURL(lastQR, (err, url) => {
+            if (!err) socket.emit('qr', url);
+        });
+    }
+
+    socket.on('request-logout', async () => {
+        console.log("🔴 Logout requested! Cleaning session...");
+        try {
+            await client.logout();
+            console.log("✅ Session cleared. Bot will restart for new QR in 5 seconds.");
+            process.exit(0); // Triggers the Auto-Restart Loop in .bat
+        } catch (err) {
+            console.error("Logout failed:", err);
+            process.exit(1);
+        }
+    });
+});
+
+
+
+
 
