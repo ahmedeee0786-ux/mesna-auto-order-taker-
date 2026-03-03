@@ -119,8 +119,11 @@ try {
             const logoPath = path.join(__dirname, 'logo.jpg');
             if (fs.existsSync(logoPath)) {
                 const media = MessageMedia.fromFilePath(logoPath);
-                await client.setProfilePicture(media);
-                console.log("WhatsApp Profile Picture updated.");
+                // setProfilePicture can sometimes fail due to library bugs (e.isNewsletter)
+                // We wrap it in a silent catch so the bot still works regardless
+                client.setProfilePicture(media).catch(e => {
+                    console.log("ℹ️ Profile picture could not be updated (Library Limitation). Skipping.");
+                });
             }
         } catch (err) { }
         await refreshMenu();
@@ -279,8 +282,11 @@ const handleMessage = async (msg) => {
                     const currentConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
                     if (currentConfig.adminPhone) {
-                        // Ensure phone is digits only for @c.us format
-                        const cleanPhone = currentConfig.adminPhone.replace(/\D/g, '');
+                        // Ensure phone is digits only and handle Pakistan format (03xx -> 923xx)
+                        let cleanPhone = currentConfig.adminPhone.replace(/\D/g, '');
+                        if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.slice(1);
+                        if (!cleanPhone.startsWith('92')) cleanPhone = '92' + cleanPhone;
+
                         const adminId = `${cleanPhone}@c.us`;
 
                         const adminMsg = `🚨 *NEW ORDER RECEIVED!*\n\n*Customer:* ${orderData.name}\n*Phone:* ${orderData.phone}\n*Items:* ${orderData.items}\n*Total:* Rs. ${orderData.total || "N/A"}\n*Address:* ${orderData.address}\n\n_Check Google Sheets for full details._`;
