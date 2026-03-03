@@ -8,6 +8,14 @@ const sheets = require("./sheets");
 const config = require("./config.json");
 require("dotenv").config();
 
+// --- Error Hardening (v6.1) ---
+process.on('uncaughtException', (err) => {
+    console.error('🔥 CRITICAL: Uncaught Exception:', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('🔥 CRITICAL: Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 console.log(`
 ╔══════════════════════════════════════╗
 ║     🍕 MESNA BOT v6.0               ║
@@ -60,22 +68,60 @@ if (executablePath) {
 
 // Multi-Client Session Setup (v6.0)
 const clientId = process.env.SESSION_ID || 'default-client';
-const client = new Client({
-    authStrategy: new LocalAuth({ clientId: clientId }),
-    puppeteer: {
-        executablePath: executablePath,
-        headless: true,
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--disable-gpu'
-        ]
-    }
-});
+let client;
+
+try {
+    client = new Client({
+        authStrategy: new LocalAuth({ clientId: clientId }),
+        puppeteer: {
+            executablePath: executablePath,
+            headless: true,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--no-first-run',
+                '--no-zygote',
+                '--disable-gpu'
+            ]
+        }
+    });
+
+    // Re-bind listeners after client creation
+    client.on("qr", async (qr) => {
+        lastQR = qr;
+        console.log("QR Code received. Sending to dashboard...");
+        qrImage.toDataURL(qr, (err, url) => {
+            if (!err) io.emit('qr', url);
+        });
+        qrImage.toFile("./qr.png", qr, (err) => {
+            if (err) console.error("Error saving QR image:", err);
+        });
+    });
+
+    client.on("ready", async () => {
+        isReady = true;
+        console.log("Mesna Bot is ready!");
+        io.emit('ready');
+        try {
+            const logoPath = path.join(__dirname, 'logo.jpg');
+            if (fs.existsSync(logoPath)) {
+                const media = MessageMedia.fromFilePath(logoPath);
+                await client.setProfilePicture(media);
+                console.log("WhatsApp Profile Picture updated.");
+            }
+        } catch (err) { }
+        await refreshMenu();
+    });
+
+    client.on("message", handleMessage);
+
+    client.initialize();
+
+} catch (err) {
+    console.error("❌ FAILED TO INITIALIZE WHATSAPP CLIENT:", err);
+}
 
 const startDashboard = require("./server");
 const port = process.env.PORT || 3000;
@@ -145,44 +191,6 @@ async function refreshMenu() {
     }
 }
 
-client.on("qr", async (qr) => {
-    lastQR = qr; // Store for watchdog
-    console.log("QR Code received. Sending to dashboard...");
-
-    // Convert QR to Data URL for the Dashboard
-    qrImage.toDataURL(qr, (err, url) => {
-        if (!err) {
-            io.emit('qr', url);
-        }
-    });
-
-    // Save QR code as image (fallback)
-    qrImage.toFile("./qr.png", qr, (err) => {
-        if (err) console.error("Error saving QR image:", err);
-    });
-});
-
-client.on("ready", async () => {
-    isReady = true; // Mark as logged in
-    console.log("Mesna Bot is ready!");
-    io.emit('ready'); // Notify Dashboard
-
-    // Auto-Set Profile Picture (Branding Identity v3.1)
-    try {
-        const logoPath = path.join(__dirname, 'logo.jpg');
-        if (fs.existsSync(logoPath)) {
-            const media = MessageMedia.fromFilePath(logoPath);
-            await client.setProfilePicture(media);
-            console.log("WhatsApp Profile Picture updated to Mesna Logo.");
-        } else {
-            console.log("logo.jpg not found. Identity automation skipped.");
-        }
-    } catch (err) {
-        console.error("Failed to set profile picture:", err);
-    }
-
-    await refreshMenu();
-});
 
 const processingUsers = new Set();
 const processedMessages = new Map(); // Simple cache: msgId -> timestamp
@@ -340,6 +348,3 @@ const handleMessage = async (msg) => {
     }
 };
 
-client.on("message", handleMessage);
-
-client.initialize();
