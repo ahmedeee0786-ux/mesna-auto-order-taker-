@@ -105,6 +105,34 @@ class MesnaAI {
     }
   }
 
+  async transcribeAudio(audioData) {
+    try {
+      console.log(`[Bytez Whisper] Transcribing regional voice note...`);
+      const url = `https://api.bytez.com/v1/models/openai/whisper-1`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Key ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          input: audioData.data // Bytez accepts base64 input in the JSON body
+        })
+      });
+
+      const data = await response.json();
+      if (data && data.output) {
+        console.log(`[Bytez Whisper] Transcription: ${data.output}`);
+        return data.output;
+      }
+      throw new Error("Empty transcription from Bytez");
+    } catch (error) {
+      console.error("[Bytez Whisper] Transcription Error:", error.message);
+      return null;
+    }
+  }
+
   async getResponse(userId, message, currentMenu = null, audioData = null) {
     if (!this.sessions.has(userId)) {
       this.sessions.set(userId, { history: [] });
@@ -126,7 +154,16 @@ class MesnaAI {
     const minOrder = currentConfig.minDeliveryOrder || 0;
     const deliveryFee = currentConfig.deliveryCharges || 150;
 
-    const voiceContext = audioData ? "\nIMPORTANT: The customer has sent a VOICE NOTE in a regional language (Urdu, Punjabi, or Saraiki). Please listen to the audio carefully and extract their order/details." : "";
+    // WHISPER TRANSCRIPTION STEP (New Priority)
+    let processedMessage = message;
+    if (audioData) {
+      const transcription = await this.transcribeAudio(audioData);
+      if (transcription) {
+        processedMessage = message ? `${message}\n[Voice Transcription]: ${transcription}` : transcription;
+      }
+    }
+
+    const voiceContext = audioData ? "\nIMPORTANT: The customer has sent a VOICE NOTE/TRANSCRIPTION. Please read the transcription carefully and extract their order/details." : "";
 
     const systemPrompt = `
       You are "Mesna", a professional and efficient AI waiter for "${restaurantName}".
@@ -178,16 +215,17 @@ class MesnaAI {
     let aiResponse = "";
 
     try {
-      console.log(`[AI Request] User: ${userId}, Provider: ${this.provider}${audioData ? ' (VOICE)' : ''}, Message: ${message}`);
+      console.log(`[AI Request] User: ${userId}, Provider: ${this.provider}${audioData ? ' (VOICE)' : ''}, Message: ${processedMessage}`);
 
-      // FOR VOICE: Always use Gemini for regional audio understanding
-      if (audioData || this.provider === "gemini") {
+      // If we already have transcription, we can treat it as text-only if provider is OpenAI
+      if (this.provider === "gemini") {
         const chat = this.model.startChat({
           history: session.history,
           systemInstruction: { parts: [{ text: systemPrompt }] },
         });
 
-        let parts = [{ text: message || "Listen to this audio." }];
+        let parts = [{ text: processedMessage || "Listen to this audio." }];
+        // If Gemini is primary, we can still send the audio for multimodal depth
         if (audioData) {
           parts.push({
             inline_data: {
@@ -204,13 +242,13 @@ class MesnaAI {
         const cleanGeminiResponse = aiResponse.split("ORDER_DATA:")[0].trim();
         session.history.push({ role: "model", parts: [{ text: cleanGeminiResponse }] });
       } else {
-        // Text-only OpenAI/Other logic
+        // Text-only OpenAI/Other logic (Now with Whisper transcription)
         const response = await this.openai.chat.completions.create({
           model: process.env.AI_MODEL || "gpt-4o",
           messages: [
             { role: "system", content: systemPrompt },
             ...session.history,
-            { role: "user", content: message },
+            { role: "user", content: processedMessage },
           ],
         });
 
@@ -220,7 +258,7 @@ class MesnaAI {
 
         aiResponse = response.choices[0].message.content;
         console.log(`[AI Response] Successfully got content (${aiResponse.length} chars)`);
-        session.history.push({ role: "user", content: message });
+        session.history.push({ role: "user", content: processedMessage });
         const cleanHistoryResponse = aiResponse.split("ORDER_DATA:")[0].trim();
         session.history.push({ role: "assistant", content: cleanHistoryResponse });
       }
