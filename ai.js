@@ -108,7 +108,11 @@ class MesnaAI {
 
   async transcribeAudio(audioData) {
     try {
-      console.log(`[Bytez Whisper] Transcribing regional voice note...`);
+      console.log(`[Bytez Whisper] Transcribing regional voice note (${audioData.mimetype})...`);
+
+      // WhatsApp audio is usually audio/ogg; codecs=opus. Whisper likes it with the data prefix.
+      const audioInput = `data:${audioData.mimetype};base64,${audioData.data}`;
+
       const url = `https://api.bytez.com/v1/models/openai/whisper-1`;
 
       const response = await fetch(url, {
@@ -118,18 +122,25 @@ class MesnaAI {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          input: audioData.data // Bytez accepts base64 input in the JSON body
+          input: audioInput
         })
       });
 
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Bytez API Error (${response.status}): ${errText}`);
+      }
+
       const data = await response.json();
       if (data && data.output) {
-        console.log(`[Bytez Whisper] Transcription: ${data.output}`);
+        console.log(`[Bytez Whisper] Success! Transcription: ${data.output}`);
         return data.output;
+      } else {
+        console.log(`[Bytez Whisper] No output in response:`, JSON.stringify(data));
       }
-      throw new Error("Empty transcription from Bytez");
+      return null;
     } catch (error) {
-      console.error("[Bytez Whisper] Transcription Error:", error.message);
+      console.error("[Bytez Whisper] CRITICAL ERROR:", error.message);
       return null;
     }
   }
