@@ -16,6 +16,7 @@ class MesnaAI {
 
     this.provider = provider || process.env.AI_PROVIDER || "openai";
     this.apiKey = dynamicConfig.apiKey || apiKey || process.env.AI_API_KEY;
+    this.whisperKey = process.env.WHISPER_API_KEY || this.apiKey;
     this.restaurantName = dynamicConfig.restaurantName || "Janan Cafe";
 
     this.sessions = new Map();
@@ -113,7 +114,7 @@ class MesnaAI {
       const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Authorization': `Key ${this.apiKey}`,
+          'Authorization': `Key ${this.whisperKey}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
