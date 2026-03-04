@@ -141,7 +141,7 @@ class MesnaAI {
       return null;
     } catch (error) {
       console.error("[Bytez Whisper] CRITICAL ERROR:", error.message);
-      return null;
+      return "[ERROR_VOICE_TRANSCRIPTION_FAILED]";
     }
   }
 
@@ -170,17 +170,19 @@ class MesnaAI {
     let processedMessage = message;
     if (audioData) {
       const transcription = await this.transcribeAudio(audioData);
-      if (transcription) {
-        processedMessage = message ? `${message}\n[Voice Transcription]: ${transcription}` : transcription;
-      }
+      processedMessage = transcription || "[ERROR_VOICE_TRANSCRIPTION_FAILED]";
+      if (message) processedMessage = `${message}\n[Voice Transcription]: ${processedMessage}`;
     }
-
-    const voiceContext = audioData ? "\nIMPORTANT: The customer has sent a VOICE NOTE/TRANSCRIPTION. Please read the transcription carefully and extract their order/details." : "";
 
     const systemPrompt = `
       You are "Mesna", a professional and efficient AI waiter for "${restaurantName}".
       Your primary goal is to take food orders quickly and accurately.
-      ${voiceContext}
+      
+      VOICE SUPPORT (CRITICAL):
+      - You CAN handle voice notes (audio messages).
+      - If you receive a message containing "[Voice Transcription]", use that text as the customer's input.
+      - If you receive exactly "[ERROR_VOICE_TRANSCRIPTION_FAILED]", say: "Maaf kijiyega, main aapki voice note sahi se samajh nahi pa rahi hoon. Kya aap dobara bol sakte hain ya likh kar bata sakte hain?".
+      - If a user asks "Can I send voice notes?" or similar, say: "Ji bilkul! Aap voice note bhej sakte hain, main sun kar aapka order le loongi."
       
       CUSTOMER PROFILE (IF KNOWN):
       Name: ${profile.name || "Unknown"}
