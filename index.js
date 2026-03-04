@@ -124,10 +124,26 @@ const handleMessage = async (msg) => {
         if (processingUsers.has(userId)) return;
         processingUsers.add(userId);
 
-        console.log(`Message from ${userId}: ${msg.body}`);
+        console.log(`Message from ${userId}: ${msg.body || "[Media/Audio]"}`);
+
+        let audioData = null;
+        if (msg.hasMedia && (msg.type === 'audio' || msg.type === 'ptt')) {
+            console.log(`[Voice Note] Downloading audio from ${userId}...`);
+            try {
+                const media = await msg.downloadMedia();
+                if (media) {
+                    audioData = {
+                        data: media.data,
+                        mimetype: media.mimetype
+                    };
+                }
+            } catch (mediaErr) {
+                console.error("Failed to download audio media:", mediaErr);
+            }
+        }
 
         // Get AI response
-        const aiResponse = await ai.getResponse(userId, msg.body, restaurantMenu);
+        const aiResponse = await ai.getResponse(userId, msg.body, restaurantMenu, audioData);
 
         // Extract ORDER_DATA using Regex (Robust for multiline/formatting)
         let finalResponse = aiResponse;

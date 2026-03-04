@@ -105,7 +105,7 @@ class MesnaAI {
     }
   }
 
-  async getResponse(userId, message, currentMenu = null) {
+  async getResponse(userId, message, currentMenu = null, audioData = null) {
     if (!this.sessions.has(userId)) {
       this.sessions.set(userId, { history: [] });
     }
@@ -122,13 +122,16 @@ class MesnaAI {
     } catch (e) { }
 
     const menuToUse = currentMenu || currentConfig.menu;
-    const restaurantName = currentConfig.restaurantName || "Janan Cafe";
+    const restaurantName = currentConfig.restaurantName || "ahmed ";
     const minOrder = currentConfig.minDeliveryOrder || 0;
     const deliveryFee = currentConfig.deliveryCharges || 150;
+
+    const voiceContext = audioData ? "\nIMPORTANT: The customer has sent a VOICE NOTE in a regional language (Urdu, Punjabi, or Saraiki). Please listen to the audio carefully and extract their order/details." : "";
 
     const systemPrompt = `
       You are "Mesna", a professional and efficient AI waiter for "${restaurantName}".
       Your primary goal is to take food orders quickly and accurately.
+      ${voiceContext}
       
       CUSTOMER PROFILE (IF KNOWN):
       Name: ${profile.name || "Unknown"}
@@ -175,22 +178,33 @@ class MesnaAI {
     let aiResponse = "";
 
     try {
-      console.log(`[AI Request] User: ${userId}, Provider: ${this.provider}, Message: ${message}`);
-      if (this.provider === "gemini") {
+      console.log(`[AI Request] User: ${userId}, Provider: ${this.provider}${audioData ? ' (VOICE)' : ''}, Message: ${message}`);
+
+      // FOR VOICE: Always use Gemini for regional audio understanding
+      if (audioData || this.provider === "gemini") {
         const chat = this.model.startChat({
           history: session.history,
           systemInstruction: { parts: [{ text: systemPrompt }] },
         });
 
-        const result = await chat.sendMessage(message);
+        let parts = [{ text: message || "Listen to this audio." }];
+        if (audioData) {
+          parts.push({
+            inline_data: {
+              mime_type: audioData.mimetype,
+              data: audioData.data
+            }
+          });
+        }
+
+        const result = await chat.sendMessage(parts);
         aiResponse = result.response.text();
 
-        session.history.push({ role: "user", parts: [{ text: message }] });
-        // Strip ORDER_DATA from history to prevent re-triggering
+        session.history.push({ role: "user", parts: parts });
         const cleanGeminiResponse = aiResponse.split("ORDER_DATA:")[0].trim();
         session.history.push({ role: "model", parts: [{ text: cleanGeminiResponse }] });
       } else {
-        console.log("History Length:", session.history.length);
+        // Text-only OpenAI/Other logic
         const response = await this.openai.chat.completions.create({
           model: process.env.AI_MODEL || "gpt-4o",
           messages: [
@@ -207,7 +221,6 @@ class MesnaAI {
         aiResponse = response.choices[0].message.content;
         console.log(`[AI Response] Successfully got content (${aiResponse.length} chars)`);
         session.history.push({ role: "user", content: message });
-        // Strip ORDER_DATA from history to prevent re-triggering
         const cleanHistoryResponse = aiResponse.split("ORDER_DATA:")[0].trim();
         session.history.push({ role: "assistant", content: cleanHistoryResponse });
       }
