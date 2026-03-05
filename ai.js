@@ -108,12 +108,10 @@ class MesnaAI {
 
   async transcribeAudio(audioData) {
     try {
-      console.log(`[Bytez Whisper] Transcribing regional voice note (${audioData.mimetype})...`);
+      console.log(`[Bytez Whisper] Attempting transcription via Bytez (${audioData.mimetype})...`);
 
-      // WhatsApp audio is usually audio/ogg; codecs=opus. Whisper likes it with the data prefix.
-      const audioInput = `data:${audioData.mimetype};base64,${audioData.data}`;
-
-      const url = `https://api.bytez.com/v1/models/openai/whisper-1`;
+      // Bytez Model Run endpoint usually ends in /run
+      const url = `https://api.bytez.com/v1/models/openai/whisper-1/run`;
 
       const response = await fetch(url, {
         method: 'POST',
@@ -122,26 +120,27 @@ class MesnaAI {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          input: audioInput
+          base64: audioData.data // Bytez documentation prefers 'base64' key for encoded media
         })
       });
 
-      if (!response.ok) {
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.output) {
+          console.log(`[Bytez Whisper] Success! Transcription: ${data.output}`);
+          return data.output;
+        }
+      } else {
         const errText = await response.text();
-        throw new Error(`Bytez API Error (${response.status}): ${errText}`);
+        console.warn(`[Bytez Whisper] API Warning (${response.status}): ${errText}`);
       }
 
-      const data = await response.json();
-      if (data && data.output) {
-        console.log(`[Bytez Whisper] Success! Transcription: ${data.output}`);
-        return data.output;
-      } else {
-        console.log(`[Bytez Whisper] No output in response:`, JSON.stringify(data));
-      }
-      return null;
+      // FALLBACK TO GEMINI (Superior for Regional Dialects)
+      console.log(`[Audio Fallback] Bytez failed or returned empty. Engaging Gemini 1.5 Flash for audio understanding...`);
+      return "[USE_GEMINI_MULTIMODAL]";
     } catch (error) {
-      console.error("[Bytez Whisper] CRITICAL ERROR:", error.message);
-      return "[ERROR_VOICE_TRANSCRIPTION_FAILED]";
+      console.error("[Audio Logic] Error in transcription chain:", error.message);
+      return "[USE_GEMINI_MULTIMODAL]";
     }
   }
 
@@ -168,10 +167,17 @@ class MesnaAI {
 
     // WHISPER TRANSCRIPTION STEP (New Priority)
     let processedMessage = message;
+    let forceGeminiForTurn = false;
+
     if (audioData) {
-      const transcription = await this.transcribeAudio(audioData);
-      processedMessage = transcription || "[ERROR_VOICE_TRANSCRIPTION_FAILED]";
-      if (message) processedMessage = `${message}\n[Voice Transcription]: ${processedMessage}`;
+      const transcriptionResult = await this.transcribeAudio(audioData);
+      if (transcriptionResult === "[USE_GEMINI_MULTIMODAL]") {
+        forceGeminiForTurn = true;
+        processedMessage = message || "Customer sent a voice note. Please process it.";
+      } else {
+        processedMessage = transcriptionResult || "[ERROR_VOICE_TRANSCRIPTION_FAILED]";
+        if (message) processedMessage = `${message}\n[Voice Transcription]: ${processedMessage}`;
+      }
     }
 
     const systemPrompt = `
@@ -179,10 +185,11 @@ class MesnaAI {
       Your primary goal is to take food orders quickly and accurately.
       
       VOICE SUPPORT (CRITICAL):
-      - You CAN handle voice notes (audio messages).
-      - If you receive a message containing "[Voice Transcription]", use that text as the customer's input.
+      - You ARE a voice-enabled bot. You can hear and understand audio messages.
+      - Customers often send voice notes in Urdu, Punjabi, or Saraiki.
       - If you receive exactly "[ERROR_VOICE_TRANSCRIPTION_FAILED]", say: "Maaf kijiyega, main aapki voice note sahi se samajh nahi pa rahi hoon. Kya aap dobara bol sakte hain ya likh kar bata sakte hain?".
-      - If a user asks "Can I send voice notes?" or similar, say: "Ji bilkul! Aap voice note bhej sakte hain, main sun kar aapka order le loongi."
+      - If a user asks "Can I send voice notes?" or "Voice bhej saktay hain?", ALWAYS say: "Ji bilkul! Aap voice note bhej sakte hain, main sun kar aapka order le loongi."
+      - Treat "[Voice Transcription]" tags as the customer's actual words.
       
       CUSTOMER PROFILE (IF KNOWN):
       Name: ${profile.name || "Unknown"}
@@ -229,17 +236,16 @@ class MesnaAI {
     let aiResponse = "";
 
     try {
-      console.log(`[AI Request] User: ${userId}, Provider: ${this.provider}${audioData ? ' (VOICE)' : ''}, Message: ${processedMessage}`);
+      console.log(`[AI Request] User: ${userId}, Provider: ${forceGeminiForTurn ? "GEMINI_VOICE_FALLBACK" : this.provider}${audioData ? ' (VOICE)' : ''}, Message: ${processedMessage}`);
 
-      // If we already have transcription, we can treat it as text-only if provider is OpenAI
-      if (this.provider === "gemini") {
+      // MULTIMODAL PATH: If Gemini is the provider OR we are forcing it due to voice
+      if (forceGeminiForTurn || this.provider === "gemini") {
         const chat = this.model.startChat({
           history: session.history,
           systemInstruction: { parts: [{ text: systemPrompt }] },
         });
 
         let parts = [{ text: processedMessage || "Listen to this audio." }];
-        // If Gemini is primary, we can still send the audio for multimodal depth
         if (audioData) {
           parts.push({
             inline_data: {
@@ -256,7 +262,7 @@ class MesnaAI {
         const cleanGeminiResponse = aiResponse.split("ORDER_DATA:")[0].trim();
         session.history.push({ role: "model", parts: [{ text: cleanGeminiResponse }] });
       } else {
-        // Text-only OpenAI/Other logic (Now with Whisper transcription)
+        // TEXT-ONLY PATH: Use primary provider (Now with Whisper transcription result)
         const response = await this.openai.chat.completions.create({
           model: process.env.AI_MODEL || "gpt-4o",
           messages: [
