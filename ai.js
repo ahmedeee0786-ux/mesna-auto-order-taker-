@@ -23,18 +23,18 @@ class MesnaAI {
     this.profilesPath = path.join(__dirname, 'profiles.json');
     this.userProfiles = this.loadProfiles();
 
-    if (this.provider === "gemini") {
-      const genKey = process.env.GEMINI_API_KEY || this.apiKey;
-      const genAI = new GoogleGenerativeAI(genKey);
-      this.model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    } else {
-      const baseURL = process.env.AI_BASE_URL || "https://api.bytez.com/v1";
-      this.openai = new OpenAI({
-        apiKey: this.apiKey,
-        baseURL: baseURL,
-        timeout: 20000
-      });
-    }
+    // ALWAYS Initialize Gemini (Needed for Vision & Voice Fallback)
+    const genKey = process.env.GEMINI_API_KEY || dynamicConfig.apiKey || apiKey || process.env.AI_API_KEY;
+    const genAI = new GoogleGenerativeAI(genKey);
+    this.model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    // Initialize OpenAI-Compatible Provider (Bytez) 
+    const baseURL = process.env.AI_BASE_URL || "https://api.bytez.com/v1";
+    this.openai = new OpenAI({
+      apiKey: this.apiKey,
+      baseURL: baseURL,
+      timeout: 20000
+    });
   }
 
   loadProfiles() {
@@ -245,11 +245,13 @@ class MesnaAI {
           systemInstruction: { parts: [{ text: systemPrompt }] },
         });
 
-        let parts = [{ text: processedMessage || "Listen to this audio." }];
+        let parts = [{ text: processedMessage || "Listen to this audio note carefully." }];
         if (audioData) {
+          // Clean mimetype: Gemini handles audio/ogg, but sometimes rejects with 'codecs=opus'
+          const cleanMime = audioData.mimetype.split(';')[0];
           parts.push({
             inline_data: {
-              mime_type: audioData.mimetype,
+              mime_type: cleanMime,
               data: audioData.data
             }
           });
