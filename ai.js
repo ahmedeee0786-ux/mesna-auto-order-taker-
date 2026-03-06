@@ -136,12 +136,33 @@ class MesnaAI {
       }
 
       // FALLBACK TO GEMINI (Superior for Regional Dialects)
-      console.log(`[Audio Fallback] Bytez failed or returned empty. Engaging Gemini 1.5 Flash for audio understanding...`);
+      console.log(`[Audio Fallback] Engagement required. Sending raw audio to Gemini 1.5 Flash...`);
       return "[USE_GEMINI_MULTIMODAL]";
     } catch (error) {
-      console.error("[Audio Logic] Error in transcription chain:", error.message);
+      console.error("[Audio Logic] Critical transcription failure:", error.message);
       return "[USE_GEMINI_MULTIMODAL]";
     }
+  }
+
+  // Private helper to ensure history format matches the current provider
+  _getConvertedHistory(rawHistory, targetProvider) {
+    if (!rawHistory || rawHistory.length === 0) return [];
+
+    return rawHistory.map(item => {
+      // Convert to Gemini format (parts)
+      if (targetProvider === "gemini") {
+        if (item.parts) return item; // Already Gemini
+        const text = item.content || "";
+        return { role: item.role === "assistant" ? "model" : "user", parts: [{ text }] };
+      }
+      // Convert to OpenAI format (content string)
+      else {
+        if (typeof item.content === "string") return item; // Already OpenAI
+        const textPart = item.parts.find(p => p.text);
+        const text = textPart ? textPart.text : "[Media Message]";
+        return { role: item.role === "model" ? "assistant" : "user", content: text };
+      }
+    });
   }
 
   async getResponse(userId, message, currentMenu = null, audioData = null) {
@@ -236,25 +257,21 @@ class MesnaAI {
     let aiResponse = "";
 
     try {
-      console.log(`[AI Request] User: ${userId}, Provider: ${forceGeminiForTurn ? "GEMINI_VOICE_FALLBACK" : this.provider}${audioData ? ' (VOICE)' : ''}, Message: ${processedMessage}`);
+      const currentProvider = forceGeminiForTurn ? "gemini" : this.provider;
+      console.log(`[AI Request] User: ${userId}, Provider: ${currentProvider}${audioData ? ' (VOICE)' : ''}, Message: ${processedMessage}`);
 
-      // MULTIMODAL PATH: If Gemini is the provider OR we are forcing it due to voice
-      if (forceGeminiForTurn || this.provider === "gemini") {
+      const convertedHistory = this._getConvertedHistory(session.history, currentProvider);
+
+      if (currentProvider === "gemini") {
         const chat = this.model.startChat({
-          history: session.history,
+          history: convertedHistory,
           systemInstruction: { parts: [{ text: systemPrompt }] },
         });
 
         let parts = [{ text: processedMessage || "Listen to this audio note carefully." }];
         if (audioData) {
-          // Clean mimetype: Gemini handles audio/ogg, but sometimes rejects with 'codecs=opus'
           const cleanMime = audioData.mimetype.split(';')[0];
-          parts.push({
-            inline_data: {
-              mime_type: cleanMime,
-              data: audioData.data
-            }
-          });
+          parts.push({ inline_data: { mime_type: cleanMime, data: audioData.data } });
         }
 
         const result = await chat.sendMessage(parts);
@@ -264,12 +281,11 @@ class MesnaAI {
         const cleanGeminiResponse = aiResponse.split("ORDER_DATA:")[0].trim();
         session.history.push({ role: "model", parts: [{ text: cleanGeminiResponse }] });
       } else {
-        // TEXT-ONLY PATH: Use primary provider (Now with Whisper transcription result)
         const response = await this.openai.chat.completions.create({
           model: process.env.AI_MODEL || "gpt-4o",
           messages: [
             { role: "system", content: systemPrompt },
-            ...session.history,
+            ...convertedHistory,
             { role: "user", content: processedMessage },
           ],
         });
@@ -285,7 +301,7 @@ class MesnaAI {
         session.history.push({ role: "assistant", content: cleanHistoryResponse });
       }
     } catch (error) {
-      console.error("AI Generation Error Details:", error);
+      console.error("🔥 CRITICAL AI ERROR:", error.message, error.stack);
       aiResponse = "Maaf kijiyega, system mein thora masla aa gaya hai. Kya aap phir se koshish kar sakte hain?";
     }
 
